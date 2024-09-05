@@ -1,2 +1,2 @@
 # axe
-Argument exetute is xargs alternative that supports arguments ordering
+Argument execute is xargs alternative that supports arguments ordering
