@@ -1,3 +1,4 @@
+use axe::arg_parser;
 use clap::Parser;
 use std::io::{self, BufRead};
 use std::{ffi::OsString, os::unix::ffi::OsStringExt, process::Command};
@@ -7,7 +8,7 @@ use std::{ffi::OsString, os::unix::ffi::OsStringExt, process::Command};
 struct Cli {
     #[arg(default_value = "echo")]
     cmd: String,
-    initial_args: Vec<String>,
+    template_args: Vec<String>,
     #[arg(short, long, default_value = " ")]
     args_separator: String,
     #[arg(short, long, default_value = "\n")]
@@ -26,10 +27,12 @@ fn main() {
 fn prepare_entries(cli: &Cli) -> Vec<Vec<String>> {
     let mut entries = Vec::new();
     let stdin_lines = read_input_lines();
+    let _resolved_template_args = arg_parser::resolve_template_args(&cli.template_args);
+
     for input_line in parse_as_input_entries(stdin_lines, &cli.entries_separator) {
         let input_args = input_line.split(&cli.args_separator).collect::<Vec<&str>>();
         let entry = cli
-            .initial_args
+            .template_args
             .iter()
             .map(|a| a.as_ref())
             .chain(input_args)
