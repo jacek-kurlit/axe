@@ -27,10 +27,13 @@ fn main() {
 fn prepare_entries(cli: &Cli) -> Vec<Vec<String>> {
     let mut entries = Vec::new();
     let stdin_lines = read_input_lines();
-    let _resolved_template_args = arg_parser::resolve_template_args(&cli.template_args);
+    //FIXME: handle error
+    let _args_resolver = arg_parser::ArgumentResolver::new(&cli.template_args).unwrap();
 
-    for input_line in parse_as_input_entries(stdin_lines, &cli.entries_separator) {
-        let input_args = input_line.split(&cli.args_separator).collect::<Vec<&str>>();
+    for stdin_entry in load_stdin_entries(stdin_lines, &cli.entries_separator) {
+        let input_args = stdin_entry
+            .split(&cli.args_separator)
+            .collect::<Vec<&str>>();
         let entry = cli
             .template_args
             .iter()
@@ -53,7 +56,7 @@ fn read_input_lines() -> Vec<String> {
     lines
 }
 
-fn parse_as_input_entries(stdin_lines: Vec<String>, entries_separator: &str) -> Vec<String> {
+fn load_stdin_entries(stdin_lines: Vec<String>, entries_separator: &str) -> Vec<String> {
     if entries_separator == "\n" {
         return stdin_lines;
     }
@@ -88,7 +91,7 @@ mod tests {
     fn should_parse_stdio_lines_as_input_entries_for_new_line_separator() {
         let stdin_lines = vec!["a b c".to_string(), "d e f".to_string()];
         let expected = stdin_lines.clone();
-        let actual = parse_as_input_entries(stdin_lines, "\n");
+        let actual = load_stdin_entries(stdin_lines, "\n");
         assert_eq!(expected, actual);
     }
 
@@ -101,7 +104,7 @@ mod tests {
             "g h i".to_string(),
             "j k l".to_string(),
         ];
-        let actual = parse_as_input_entries(stdin_lines.clone(), ";");
+        let actual = load_stdin_entries(stdin_lines.clone(), ";");
         assert_eq!(expected, actual);
     }
 }
