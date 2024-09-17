@@ -32,7 +32,7 @@ enum ArgPlaceholderToken<'a> {
     #[token("}")]
     BraceClose,
     #[regex(r"[0-9]+", |lex| lex.slice().parse())]
-    Index(u8),
+    Index(usize),
     #[regex(r"[^0-9\{}]+", |lex| lex.slice())]
     Separator(&'a str),
 }

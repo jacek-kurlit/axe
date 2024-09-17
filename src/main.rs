@@ -24,24 +24,23 @@ fn main() {
     }
 }
 
+//FIXME:template_args may be empty, it means that we should append all args as last argument
 fn prepare_entries(cli: &Cli) -> Vec<Vec<String>> {
     let mut entries = Vec::new();
     let stdin_lines = read_input_lines();
     //FIXME: handle error
-    let _args_resolver = arg_parser::ArgumentResolver::new(&cli.template_args).unwrap();
+    let args_resolver = arg_parser::ArgumentResolver::new(&cli.template_args).unwrap();
 
     for stdin_entry in load_stdin_entries(stdin_lines, &cli.entries_separator) {
         let input_args = stdin_entry
             .split(&cli.args_separator)
             .collect::<Vec<&str>>();
-        let entry = cli
-            .template_args
-            .iter()
-            .map(|a| a.as_ref())
-            .chain(input_args)
-            //FIXME: find a way to avoid cloning
-            .map(|a| a.to_string())
-            .collect::<Vec<String>>();
+        //FIXME: handle error
+        //we may add flag to choose how to behave on error like:
+        //panic and break
+        //replace invalid value withempty string
+        //ignore failed entry and continue with others
+        let entry = args_resolver.resolve(input_args).unwrap();
         entries.push(entry);
     }
     entries
@@ -69,7 +68,6 @@ fn load_stdin_entries(stdin_lines: Vec<String>, entries_separator: &str) -> Vec<
 }
 
 fn execute_cmd(cli: &Cli, entry: Vec<String>) {
-    println!("{} {:?}", cli.cmd, &entry);
     let output = Command::new(&cli.cmd)
         .args(entry)
         .output()

@@ -1,6 +1,7 @@
 use template_resolver::resolve_arg_template;
+use thiserror::Error;
 
-use std::num::ParseIntError;
+use std::{num::ParseIntError, str::Split};
 
 mod placeholder_resolver;
 mod template_resolver;
@@ -8,19 +9,29 @@ mod template_resolver;
 #[derive(Debug, PartialEq, Eq)]
 pub enum ResolvedArgumentPart<'a> {
     //{0}
-    Index(u8),
+    Index(usize),
     //{0.}
-    IndexSplit(u8, &'a str),
+    IndexSplit(usize, &'a str),
     //{0.0}
-    IndexSplitIndex(u8, &'a str, u8),
+    IndexSplitIndex(usize, &'a str, usize),
     //{.0}
-    SplitIndex(&'a str, u8),
+    SplitIndex(&'a str, usize),
     //{.}
     Split(&'a str),
     //{}
     Empty,
     //abcd
     FreeText(&'a str),
+}
+
+#[derive(Error, Debug)]
+pub enum ResolveError {
+    //TODO: this needs better error handling because we don't display which arg failed
+    //so maybe anyhow will be better so we can keep adding context?
+    #[error("Index {0} is out of bounds")]
+    InvalidIndex(usize),
+    #[error("unknown data store error")]
+    Other,
 }
 
 pub type ResolvedArgument<'a> = Vec<ResolvedArgumentPart<'a>>;
@@ -34,61 +45,96 @@ impl<'a> ArgumentResolver<'a> {
         let resolved_args = resolve_template_args(arg_templates)?;
         Ok(ArgumentResolver { resolved_args })
     }
-    
-    //TODO: return Result, for example someone could provide a wrong index
-    //on the other hand, we could add option to ignore errors
-    //which means parsing in either strict or non-strict mode
-    pub fn resolve(&self, input_args: Vec<&str>) -> Vec<String> {
+
+    pub fn resolve(&self, input_args: Vec<&str>) -> Result<Vec<String>, ResolveError> {
         let mut result = Vec::new();
-        for resolved_arg in &self.resolved_args {
-            for part in resolved_arg {
-                match part {
-                    ResolvedArgumentPart::Index(index) => {
-                        let index = *index as usize;
-                        if index < input_args.len() {
-                            arg.push_str(input_args[index]);
-                        }
-                    }
-                    ResolvedArgumentPart::IndexSplit(index, split) => {
-                        let index = *index as usize;
-                        if index < input_args.len() {
-                            let parts = input_args[index].split(split).collect::<Vec<&str>>();
-                            if !parts.is_empty() {
-                                arg.push_str(parts[0]);
-                            }
-                        }
-                    }
-                    ResolvedArgumentPart::IndexSplitIndex(index, split, split_index) => {
-                        let index = *index as usize;
-                        if index < input_args.len() {
-                            let parts = input_args[index].split(split).collect::<Vec<&str>>();
-                            if *split_index as usize < parts.len() {
-                                arg.push_str(parts[*split_index as usize]);
-                            }
-                        }
-                    }
-                    ResolvedArgumentPart::SplitIndex(split, split_index) => {
-                        let parts = split.split(split).collect::<Vec<&str>>();
-                        if *split_index as usize < parts.len() {
-                            arg.push_str(parts[*split_index as usize]);
-                        }
-                    }
-                    ResolvedArgumentPart::Split(split) => {
-                        let parts = split.split(split).collect::<Vec<&str>>();
-                        if !parts.is_empty() {
-                            arg.push_str(parts[0]);
-                        }
-                    }
-                    ResolvedArgumentPart::Empty => {}
-                    ResolvedArgumentPart::FreeText(text) => {
-                        arg.push_str(text);
-                    }
-                }
-            }
-            result.push(arg);
+        for arg_template in &self.resolved_args {
+            let mut resolved = self.resolve_arg_template(arg_template, &input_args)?;
+            result.append(&mut resolved);
         }
-        result
+        Ok(result)
     }
+
+    fn resolve_arg_template(
+        &self,
+        arg_template: &[ResolvedArgumentPart],
+        input_args: &[&str],
+    ) -> Result<Vec<String>, ResolveError> {
+        let mut resolved = Vec::new();
+        for part in arg_template {
+            let single_part = resolve_single_arg_part(part, input_args)?;
+            resolved = multiply_args_parts(resolved, single_part);
+        }
+        Ok(resolved)
+    }
+}
+
+fn resolve_single_arg_part(
+    arg_template: &ResolvedArgumentPart,
+    input_args: &[&str],
+) -> Result<Vec<String>, ResolveError> {
+    let resolved = match arg_template {
+        ResolvedArgumentPart::Index(idx) => vec![get_input_arg(*idx, input_args)?.to_string()],
+        ResolvedArgumentPart::IndexSplit(idx, split_by) => {
+            let input_arg = get_input_arg(*idx, input_args)?;
+            input_arg.split(*split_by).map(|s| s.to_string()).collect()
+        }
+        ResolvedArgumentPart::IndexSplitIndex(idx, split_by, split_idx) => {
+            let input_arg = get_input_arg(*idx, input_args)?;
+            let mut splitted = input_arg.split(*split_by);
+            vec![get_split_arg(*split_idx, &mut splitted)?.to_string()]
+        }
+        ResolvedArgumentPart::SplitIndex(split_by, split_idx) => input_args
+            .iter()
+            .map(|a| {
+                let mut splitted = a.split(*split_by);
+                get_split_arg(*split_idx, &mut splitted).map(|s| s.to_string())
+            })
+            .collect::<Result<Vec<String>, ResolveError>>()?,
+        ResolvedArgumentPart::Split(split_by) => input_args
+            .iter()
+            .map(|a| a.split(split_by).map(|s| s.to_string()))
+            .flat_map(|a| a.into_iter())
+            .collect::<Vec<String>>(),
+        ResolvedArgumentPart::Empty => input_args.iter().map(|a| a.to_string()).collect(),
+        ResolvedArgumentPart::FreeText(text) => vec![text.to_string()],
+    };
+    Ok(resolved)
+}
+
+fn get_input_arg<'a>(idx: usize, input_args: &'a [&'a str]) -> Result<&'a str, ResolveError> {
+    input_args
+        .get(idx)
+        .copied()
+        .ok_or(ResolveError::InvalidIndex(idx))
+}
+
+fn get_split_arg<'a>(
+    idx: usize,
+    splitted: &'a mut Split<&'a str>,
+) -> Result<&'a str, ResolveError> {
+    splitted.nth(idx).ok_or(ResolveError::InvalidIndex(idx))
+}
+
+//This performs args multiplication for example
+//[a,b] * [c] -> [ac,bc]
+//[a] * [b] -> [ab]
+//[a,b] * [c,d] -> [ac,ad,bc,bd]
+fn multiply_args_parts(a: Vec<String>, b: Vec<String>) -> Vec<String> {
+    if a.is_empty() {
+        return b;
+    }
+    if b.is_empty() {
+        return a;
+    }
+    let mut result = Vec::with_capacity(a.len() * b.len());
+    for a_part in a {
+        for b_part in b.clone() {
+            result.push(format!("{}{}", a_part, b_part));
+        }
+    }
+
+    result
 }
 
 fn resolve_template_args(
