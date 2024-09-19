@@ -1,13 +1,16 @@
-use template_resolver::resolve_arg_template;
+use arguments_resolver::resolve_template_args;
 use thiserror::Error;
 
 use std::{num::ParseIntError, str::Split};
 
-mod placeholder_resolver;
-mod template_resolver;
+use crate::cli::Cli;
 
+mod arguments_resolver;
+mod placeholder_resolver;
+
+// echo abcd{0}efg{1.0} {2} {}
 #[derive(Debug, PartialEq, Eq)]
-pub enum ResolvedArgumentPart<'a> {
+enum ArgTemplatePart<'a> {
     //{0}
     Index(usize),
     //{0.}
@@ -34,19 +37,40 @@ pub enum ResolveError {
     Other,
 }
 
-pub type ResolvedArgument<'a> = Vec<ResolvedArgumentPart<'a>>;
+//FIXME:template_args may be empty, it means that we should append all args as last argument
+pub fn resolve_cmd_args(stdin_entries: Vec<String>, cli: &Cli) -> Vec<Vec<String>> {
+    let mut entries = Vec::new();
+    //FIXME: handle error
+    let args_resolver = ArgumentResolver::new(&cli.args_templates).unwrap();
 
-pub struct ArgumentResolver<'a> {
+    for stdin_entry in stdin_entries {
+        let input_args = stdin_entry
+            .split(&cli.args_separator)
+            .collect::<Vec<&str>>();
+        //FIXME: handle error
+        //we may add flag to choose how to behave on error like:
+        //panic and break
+        //replace invalid value withempty string
+        //ignore failed entry and continue with others
+        let entry = args_resolver.resolve(input_args).unwrap();
+        entries.push(entry);
+    }
+    entries
+}
+
+type ResolvedArgument<'a> = Vec<ArgTemplatePart<'a>>;
+
+struct ArgumentResolver<'a> {
     resolved_args: Vec<ResolvedArgument<'a>>,
 }
 
 impl<'a> ArgumentResolver<'a> {
-    pub fn new(arg_templates: &'a Vec<String>) -> Result<ArgumentResolver<'a>, LexingError> {
+    fn new(arg_templates: &'a Vec<String>) -> Result<ArgumentResolver<'a>, LexingError> {
         let resolved_args = resolve_template_args(arg_templates)?;
         Ok(ArgumentResolver { resolved_args })
     }
 
-    pub fn resolve(&self, input_args: Vec<&str>) -> Result<Vec<String>, ResolveError> {
+    fn resolve(&self, input_args: Vec<&str>) -> Result<Vec<String>, ResolveError> {
         let mut result = Vec::new();
         for arg_template in &self.resolved_args {
             let mut resolved = self.resolve_arg_template(arg_template, &input_args)?;
@@ -57,7 +81,7 @@ impl<'a> ArgumentResolver<'a> {
 
     fn resolve_arg_template(
         &self,
-        arg_template: &[ResolvedArgumentPart],
+        arg_template: &[ArgTemplatePart],
         input_args: &[&str],
     ) -> Result<Vec<String>, ResolveError> {
         let mut resolved = Vec::new();
@@ -70,34 +94,34 @@ impl<'a> ArgumentResolver<'a> {
 }
 
 fn resolve_single_arg_part(
-    arg_template: &ResolvedArgumentPart,
+    arg_template: &ArgTemplatePart,
     input_args: &[&str],
 ) -> Result<Vec<String>, ResolveError> {
     let resolved = match arg_template {
-        ResolvedArgumentPart::Index(idx) => vec![get_input_arg(*idx, input_args)?.to_string()],
-        ResolvedArgumentPart::IndexSplit(idx, split_by) => {
+        ArgTemplatePart::Index(idx) => vec![get_input_arg(*idx, input_args)?.to_string()],
+        ArgTemplatePart::IndexSplit(idx, split_by) => {
             let input_arg = get_input_arg(*idx, input_args)?;
             input_arg.split(*split_by).map(|s| s.to_string()).collect()
         }
-        ResolvedArgumentPart::IndexSplitIndex(idx, split_by, split_idx) => {
+        ArgTemplatePart::IndexSplitIndex(idx, split_by, split_idx) => {
             let input_arg = get_input_arg(*idx, input_args)?;
             let mut splitted = input_arg.split(*split_by);
             vec![get_split_arg(*split_idx, &mut splitted)?.to_string()]
         }
-        ResolvedArgumentPart::SplitIndex(split_by, split_idx) => input_args
+        ArgTemplatePart::SplitIndex(split_by, split_idx) => input_args
             .iter()
             .map(|a| {
                 let mut splitted = a.split(*split_by);
                 get_split_arg(*split_idx, &mut splitted).map(|s| s.to_string())
             })
             .collect::<Result<Vec<String>, ResolveError>>()?,
-        ResolvedArgumentPart::Split(split_by) => input_args
+        ArgTemplatePart::Split(split_by) => input_args
             .iter()
             .map(|a| a.split(split_by).map(|s| s.to_string()))
             .flat_map(|a| a.into_iter())
             .collect::<Vec<String>>(),
-        ResolvedArgumentPart::Empty => input_args.iter().map(|a| a.to_string()).collect(),
-        ResolvedArgumentPart::FreeText(text) => vec![text.to_string()],
+        ArgTemplatePart::Empty => input_args.iter().map(|a| a.to_string()).collect(),
+        ArgTemplatePart::FreeText(text) => vec![text.to_string()],
     };
     Ok(resolved)
 }
@@ -135,19 +159,6 @@ fn multiply_args_parts(a: Vec<String>, b: Vec<String>) -> Vec<String> {
     }
 
     result
-}
-
-fn resolve_template_args(
-    arg_templates: &Vec<String>,
-) -> Result<Vec<ResolvedArgument>, LexingError> {
-    let mut result = Vec::new();
-
-    for arg_template in arg_templates {
-        let resolved = resolve_arg_template(arg_template)?;
-        result.push(resolved);
-    }
-
-    Ok(result)
 }
 
 #[derive(Default, Debug, Clone, PartialEq)]

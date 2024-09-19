@@ -1,25 +1,23 @@
-use super::{LexingError, ResolvedArgumentPart};
+use super::{ArgTemplatePart, LexingError};
 use logos::Logos;
 
-pub(super) fn resolve_arg_placeholder(
-    placeholder: &str,
-) -> Result<ResolvedArgumentPart, LexingError> {
+pub fn resolve_arg_placeholder(placeholder: &str) -> Result<ArgTemplatePart, LexingError> {
     let lex = ArgPlaceholderToken::lexer(placeholder);
     let tokens = lex.collect::<Result<Vec<ArgPlaceholderToken>, LexingError>>()?;
     use ArgPlaceholderToken::*;
     match tokens.as_slice() {
-        [BraceOpen, Index(index), BraceClose] => Ok(ResolvedArgumentPart::Index(*index)),
+        [BraceOpen, Index(index), BraceClose] => Ok(ArgTemplatePart::Index(*index)),
         [BraceOpen, Index(index), Separator(sep), BraceClose] => {
-            Ok(ResolvedArgumentPart::IndexSplit(*index, sep))
+            Ok(ArgTemplatePart::IndexSplit(*index, sep))
         }
         [BraceOpen, Index(index), Separator(sep), Index(index2), BraceClose] => {
-            Ok(ResolvedArgumentPart::IndexSplitIndex(*index, sep, *index2))
+            Ok(ArgTemplatePart::IndexSplitIndex(*index, sep, *index2))
         }
         [BraceOpen, Separator(sep), Index(index), BraceClose] => {
-            Ok(ResolvedArgumentPart::SplitIndex(sep, *index))
+            Ok(ArgTemplatePart::SplitIndex(sep, *index))
         }
-        [BraceOpen, Separator(sep), BraceClose] => Ok(ResolvedArgumentPart::Split(sep)),
-        [BraceOpen, BraceClose] => Ok(ResolvedArgumentPart::Empty),
+        [BraceOpen, Separator(sep), BraceClose] => Ok(ArgTemplatePart::Split(sep)),
+        [BraceOpen, BraceClose] => Ok(ArgTemplatePart::Empty),
         _ => Err(LexingError::InvalidDefinition),
     }
 }
@@ -108,27 +106,27 @@ mod tests {
     #[test]
     fn should_parse_arg_placeholders() {
         assert_eq!(
-            ResolvedArgumentPart::Index(0),
+            ArgTemplatePart::Index(0),
             resolve_arg_placeholder("{0}").unwrap()
         );
         assert_eq!(
-            ResolvedArgumentPart::IndexSplit(0, "."),
+            ArgTemplatePart::IndexSplit(0, "."),
             resolve_arg_placeholder("{0.}").unwrap()
         );
         assert_eq!(
-            ResolvedArgumentPart::IndexSplitIndex(0, ".", 1),
+            ArgTemplatePart::IndexSplitIndex(0, ".", 1),
             resolve_arg_placeholder("{0.1}").unwrap()
         );
         assert_eq!(
-            ResolvedArgumentPart::SplitIndex(".", 0),
+            ArgTemplatePart::SplitIndex(".", 0),
             resolve_arg_placeholder("{.0}").unwrap()
         );
         assert_eq!(
-            ResolvedArgumentPart::Split("."),
+            ArgTemplatePart::Split("."),
             resolve_arg_placeholder("{.}").unwrap()
         );
         assert_eq!(
-            ResolvedArgumentPart::Empty,
+            ArgTemplatePart::Empty,
             resolve_arg_placeholder("{}").unwrap()
         );
     }
