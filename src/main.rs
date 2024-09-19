@@ -1,4 +1,4 @@
-use axe::arg_parser::resolve_cmd_args;
+use axe::arg_resolver::resolve_cmd_args;
 use axe::cli::Cli;
 use axe::cmd_exe::execute_cmd;
 use axe::stdin::read_stdin_entries;

@@ -1,10 +1,39 @@
-use super::{ArgTemplatePart, LexingError};
 use logos::Logos;
 
-pub fn resolve_arg_placeholder(placeholder: &str) -> Result<ArgTemplatePart, LexingError> {
+use super::tokens::{ArgPlaceholderToken, ArgPlaceholderToken::*, ArgTemplateToken, LexingError};
+use super::ArgTemplatePart;
+use super::ResolvedArgument;
+
+pub fn resolve_template_args(
+    arg_templates: &[String],
+) -> Result<Vec<ResolvedArgument>, LexingError> {
+    arg_templates
+        .iter()
+        .map(|a| resolve_arg_template(a.as_str()))
+        .collect()
+}
+
+fn resolve_arg_template(arg_template: &str) -> Result<ResolvedArgument, LexingError> {
+    let mut lex = ArgTemplateToken::lexer(arg_template);
+    let mut resolved = Vec::new();
+    while let Some(token) = lex.next() {
+        match token? {
+            ArgTemplateToken::ArgPlaceholder => {
+                let ra = resolve_arg_placeholder(lex.slice())?;
+                resolved.push(ra);
+            }
+            ArgTemplateToken::FreeText | ArgTemplateToken::EscapedText => {
+                let ra = ArgTemplatePart::FreeText(lex.slice());
+                resolved.push(ra)
+            }
+        }
+    }
+    Ok(resolved)
+}
+
+fn resolve_arg_placeholder(placeholder: &str) -> Result<ArgTemplatePart, LexingError> {
     let lex = ArgPlaceholderToken::lexer(placeholder);
     let tokens = lex.collect::<Result<Vec<ArgPlaceholderToken>, LexingError>>()?;
-    use ArgPlaceholderToken::*;
     match tokens.as_slice() {
         [BraceOpen, Index(index), BraceClose] => Ok(ArgTemplatePart::Index(*index)),
         [BraceOpen, Index(index), Separator(sep), BraceClose] => {
@@ -22,86 +51,9 @@ pub fn resolve_arg_placeholder(placeholder: &str) -> Result<ArgTemplatePart, Lex
     }
 }
 
-#[derive(Debug, Logos, PartialEq)]
-#[logos(error = LexingError)]
-enum ArgPlaceholderToken<'a> {
-    #[token("{")]
-    BraceOpen,
-    #[token("}")]
-    BraceClose,
-    #[regex(r"[0-9]+", |lex| lex.slice().parse())]
-    Index(usize),
-    #[regex(r"[^0-9\{}]+", |lex| lex.slice())]
-    Separator(&'a str),
-}
-
 #[cfg(test)]
 mod tests {
-
     use super::*;
-
-    #[test]
-    fn lexer_should_parse_arg_placeholder_with_index_only() {
-        let mut lex = ArgPlaceholderToken::lexer("{0}");
-
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceOpen)));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::Index(0))));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceClose)));
-        assert_eq!(lex.next(), None);
-    }
-
-    #[test]
-    fn lexer_should_parse_arg_placeholder_with_index_and_separator() {
-        let mut lex = ArgPlaceholderToken::lexer("{0.}");
-
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceOpen)));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::Index(0))));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::Separator("."))));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceClose)));
-        assert_eq!(lex.next(), None);
-    }
-
-    #[test]
-    fn lexer_should_parse_arg_placeholder_with_index_separator_and_index() {
-        let mut lex = ArgPlaceholderToken::lexer("{0.1}");
-
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceOpen)));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::Index(0))));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::Separator("."))));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::Index(1))));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceClose)));
-        assert_eq!(lex.next(), None);
-    }
-
-    #[test]
-    fn lexer_should_parse_empty_arg_placeholder() {
-        let mut lex = ArgPlaceholderToken::lexer("{}");
-
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceOpen)));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceClose)));
-        assert_eq!(lex.next(), None);
-    }
-
-    #[test]
-    fn lexer_should_parse_empty_arg_placeholder_with_separator() {
-        let mut lex = ArgPlaceholderToken::lexer("{.}");
-
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceOpen)));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::Separator("."))));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceClose)));
-        assert_eq!(lex.next(), None);
-    }
-
-    #[test]
-    fn lexer_should_parse_arg_placeholder_with_separator_and_index() {
-        let mut lex = ArgPlaceholderToken::lexer("{.0}");
-
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceOpen)));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::Separator("."))));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::Index(0))));
-        assert_eq!(lex.next(), Some(Ok(ArgPlaceholderToken::BraceClose)));
-        assert_eq!(lex.next(), None);
-    }
 
     #[test]
     fn should_parse_arg_placeholders() {

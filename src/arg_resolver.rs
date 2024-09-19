@@ -1,12 +1,13 @@
-use arguments_resolver::resolve_template_args;
+use templates_resolver::resolve_template_args;
 use thiserror::Error;
+use tokens::LexingError;
 
-use std::{num::ParseIntError, str::Split};
+use std::str::Split;
 
 use crate::cli::Cli;
 
-mod arguments_resolver;
-mod placeholder_resolver;
+mod templates_resolver;
+mod tokens;
 
 // echo abcd{0}efg{1.0} {2} {}
 #[derive(Debug, PartialEq, Eq)]
@@ -65,7 +66,7 @@ struct ArgumentResolver<'a> {
 }
 
 impl<'a> ArgumentResolver<'a> {
-    fn new(arg_templates: &'a Vec<String>) -> Result<ArgumentResolver<'a>, LexingError> {
+    fn new(arg_templates: &'a [String]) -> Result<ArgumentResolver<'a>, LexingError> {
         let resolved_args = resolve_template_args(arg_templates)?;
         Ok(ArgumentResolver { resolved_args })
     }
@@ -159,21 +160,4 @@ fn multiply_args_parts(a: Vec<String>, b: Vec<String>) -> Vec<String> {
     }
 
     result
-}
-
-#[derive(Default, Debug, Clone, PartialEq)]
-pub enum LexingError {
-    InvalidInteger(String),
-    #[default]
-    InvalidDefinition,
-}
-
-impl From<ParseIntError> for LexingError {
-    fn from(err: ParseIntError) -> Self {
-        use std::num::IntErrorKind::*;
-        match err.kind() {
-            PosOverflow | NegOverflow => LexingError::InvalidInteger("overflow error".to_owned()),
-            _ => LexingError::InvalidInteger("other error".to_owned()),
-        }
-    }
 }
