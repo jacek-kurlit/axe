@@ -46,8 +46,8 @@ Each new line is treated as a data entry.
 Echo command will be run for each line.
 This is equal to calling
 ```sh
-echo "a b c"
-echo "d e f"
+echo a b c
+echo d e f
 ```
 
 ### Arguments splitting for individual arguments
