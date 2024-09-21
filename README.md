@@ -71,7 +71,13 @@ output: `a c e`
 With **[dra](https://github.com/devmatteini/dra)** 
 
 ```sh
-dra download --install jacek-kurlit/axe
+dra download -i -a -o ~/.local/bin jacek-kurlit/axe
+```
+
+With **[eget](https://github.com/zyedidia/eget)** 
+
+```sh
+eget jacek-kurlit/axe --to=~/.local/bin
 ```
 
 If you're a **Rust programmer**, axe can be installed with `cargo`.
