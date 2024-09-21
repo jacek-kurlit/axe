@@ -80,13 +80,6 @@ If you're a **Rust programmer**, axe can be installed with `cargo`.
 cargo install axe-cli
 ```
 
-Alternatively, one can use [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall) to install a axe
-binary directly from GitHub:
-
-```sh
-cargo binstall axe-cli
-```
-
 ## How does axe work?
 
 ### Entries and command execution
