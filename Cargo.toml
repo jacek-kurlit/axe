@@ -2,6 +2,12 @@
 name = "axe-cli"
 version = "0.1.0"
 edition = "2021"
+authors = ["Jacek Kurlit"]
+keywords = ["terminal", "xargs", "linux", "system", "command"]
+categories = ["command-line-utilities"]
+license-file = "LICENSE"
+description = "axe - Argument execute is xargs alternative that focus on arguments processing and ordering."
+repository = "https://github.com/jacek-kurlit/axe"
 
 [[bin]]
 name = "axe"
