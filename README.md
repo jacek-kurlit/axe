@@ -77,14 +77,14 @@ dra download --install jacek-kurlit/pik
 If you're a **Rust programmer**, axe can be installed with `cargo`.
 
 ```sh
-cargo install axe
+cargo install axe-cli
 ```
 
 Alternatively, one can use [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall) to install a axe
 binary directly from GitHub:
 
 ```sh
-cargo binstall axe
+cargo binstall axe-cli
 ```
 
 ## How does axe work?
@@ -145,7 +145,6 @@ Axe will read this as follows:
 {1} take second argument(`f2.txt`)
 
 Output `f1 txt f2.txt`
-```
 
 ## Motivation
 Every time I was using xargs command I was frustrated that I cannot tell where I want to place arguments.
