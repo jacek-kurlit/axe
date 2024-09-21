@@ -233,6 +233,15 @@ mod tests {
         assert_eq!(lex.slice(), "{0}");
         assert_eq!(lex.next(), None);
 
+        let mut lex = ArgTemplateToken::lexer(r"\{0abc{0}\}");
+        assert_eq!(lex.next(), Some(Ok(ArgTemplateToken::EscapedText)));
+        assert_eq!(lex.slice(), r"\{0abc");
+        assert_eq!(lex.next(), Some(Ok(ArgTemplateToken::ArgPlaceholder)));
+        assert_eq!(lex.slice(), r"{0}");
+        assert_eq!(lex.next(), Some(Ok(ArgTemplateToken::EscapedText)));
+        assert_eq!(lex.slice(), r"\}");
+        assert_eq!(lex.next(), None);
+
         let mut lex = ArgTemplateToken::lexer(r"\{{0}}{1}\d{2}");
         assert_eq!(lex.next(), Some(Ok(ArgTemplateToken::EscapedText)));
         assert_eq!(lex.slice(), r"\{{0}}");
@@ -242,6 +251,17 @@ mod tests {
         assert_eq!(lex.slice(), r"\d");
         assert_eq!(lex.next(), Some(Ok(ArgTemplateToken::ArgPlaceholder)));
         assert_eq!(lex.slice(), "{2}");
+        assert_eq!(lex.next(), None);
+
+        let mut lex = ArgTemplateToken::lexer(r"\{ {0} \}");
+        assert_eq!(lex.next(), Some(Ok(ArgTemplateToken::EscapedText)));
+        assert_eq!(lex.slice(), r"\{ ");
+        assert_eq!(lex.next(), Some(Ok(ArgTemplateToken::ArgPlaceholder)));
+        assert_eq!(lex.slice(), r"{0}");
+        assert_eq!(lex.next(), Some(Ok(ArgTemplateToken::FreeText)));
+        assert_eq!(lex.slice(), " ");
+        assert_eq!(lex.next(), Some(Ok(ArgTemplateToken::EscapedText)));
+        assert_eq!(lex.slice(), r"\}");
         assert_eq!(lex.next(), None);
     }
 }

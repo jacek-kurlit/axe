@@ -22,8 +22,12 @@ fn resolve_arg_template(arg_template: &str) -> Result<ResolvedArgument, LexingEr
                 let ra = resolve_arg_placeholder(lex.slice())?;
                 resolved.push(ra);
             }
-            ArgTemplateToken::FreeText | ArgTemplateToken::EscapedText => {
+            ArgTemplateToken::FreeText => {
                 let ra = ArgTemplatePart::FreeText(lex.slice());
+                resolved.push(ra)
+            }
+            ArgTemplateToken::EscapedText => {
+                let ra = ArgTemplatePart::FreeText(&lex.slice()[1..]);
                 resolved.push(ra)
             }
         }
@@ -54,6 +58,36 @@ fn resolve_arg_placeholder(placeholder: &str) -> Result<ArgTemplatePart, LexingE
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn should_parse_arg_template() {
+        assert_eq!(
+            vec![
+                ArgTemplatePart::FreeText("freeText"),
+                ArgTemplatePart::IndexSplitIndex(0, ".", 0),
+                ArgTemplatePart::FreeText("-"),
+                ArgTemplatePart::Split("."),
+                ArgTemplatePart::Empty,
+                ArgTemplatePart::FreeText("text"),
+                ArgTemplatePart::FreeText("{EscapedText}"),
+                ArgTemplatePart::FreeText("{{}}"),
+            ],
+            resolve_arg_template(r"freeText{0.0}-{.}{}text\{EscapedText}\{{}}").unwrap()
+        );
+    }
+
+    #[test]
+    fn should_fail_to_parse_arg_template() {
+        assert_eq!(
+            LexingError::InvalidDefinition,
+            resolve_arg_template("{{0}}").unwrap_err()
+        );
+
+        assert_eq!(
+            LexingError::InvalidDefinition,
+            resolve_arg_template(r"\{\{0}}").unwrap_err()
+        );
+    }
 
     #[test]
     fn should_parse_arg_placeholders() {
