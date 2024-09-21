@@ -1,7 +1,7 @@
-use axe::arg_resolver::resolve_cmd_args;
-use axe::cli::Cli;
-use axe::cmd_exe::execute_cmd;
-use axe::stdin::read_stdin_entries;
+use axe_cli::arg_resolver::resolve_cmd_args;
+use axe_cli::cli::Cli;
+use axe_cli::cmd_exe::execute_cmd;
+use axe_cli::stdin::read_stdin_entries;
 use clap::Parser;
 
 fn main() {
