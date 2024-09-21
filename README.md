@@ -71,7 +71,7 @@ output: `a c e`
 With **[dra](https://github.com/devmatteini/dra)** 
 
 ```sh
-dra download --install jacek-kurlit/pik
+dra download --install jacek-kurlit/axe
 ```
 
 If you're a **Rust programmer**, axe can be installed with `cargo`.
