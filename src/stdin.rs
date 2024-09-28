@@ -1,17 +1,36 @@
-use std::io::{self, BufRead};
+use std::{
+    io::{self, BufRead, BufReader},
+    path::PathBuf,
+};
 
-pub fn read_stdin_entries(entries_separator: &str) -> Vec<String> {
-    let stdin_lines = read_input_lines();
+use clap::error::Result;
+
+pub fn read_entries(args_file: &Option<PathBuf>, entries_separator: &str) -> Vec<String> {
+    let stdin_lines = read_input_lines(args_file);
     split_input_lines_into_entries(stdin_lines, entries_separator)
 }
 
-fn read_input_lines() -> Vec<String> {
-    let stdin = io::stdin();
-    let mut lines = Vec::new();
-    for line in stdin.lock().lines() {
-        lines.push(line.expect("Could not read line from standard in"));
-    }
-    lines
+fn read_input_lines(args_file: &Option<PathBuf>) -> Vec<String> {
+    let reader: Box<dyn BufRead> = match args_file {
+        Some(path) => {
+            //FIXME: handle error
+            let file = std::fs::File::open(path).expect("Could not open file");
+            Box::new(BufReader::new(file))
+        }
+        None => Box::new(io::stdin().lock()),
+    };
+    reader
+        .lines()
+        .collect::<Result<Vec<String>, io::Error>>()
+        .unwrap_or_else(|_| {
+            panic!(
+                "Could not read args from {}",
+                args_file
+                    .as_ref()
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("stdin")
+            )
+        })
 }
 
 fn split_input_lines_into_entries(
@@ -30,6 +49,7 @@ fn split_input_lines_into_entries(
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]

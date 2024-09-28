@@ -30,6 +30,6 @@ pub struct Cli {
     #[arg(short, long)]
     pub debug: bool,
     /// Reads arguments from file instead of standard input
-    #[arg(short = 'f', long = "args-file", value_name = "FILE")]
-    pub file_args: Option<PathBuf>,
+    #[arg(short = 'f', long, value_name = "FILE")]
+    pub args_file: Option<PathBuf>,
 }

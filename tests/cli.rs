@@ -1,6 +1,6 @@
 use std::{
     io::Write,
-    process::{Command, Stdio},
+    process::{Command, Output, Stdio},
 };
 
 #[test]
@@ -27,6 +27,23 @@ fn should_print_debug_instead_of_running_command() {
     assert_eq!(output, vec!("echo a b c", "echo d e f"));
 }
 
+#[test]
+fn should_use_arg_file_instead_of_stdin() {
+    let output = Command::new("cargo")
+        .args([
+            "run",
+            "-q",
+            "--",
+            "-f",
+            "tests/test_arg_file.txt",
+            "echo",
+            "{}",
+        ])
+        .output()
+        .expect("Failed to execute cargo run");
+    assert_eq!(read_output_lines(output), vec!["a b c", "d e f"]);
+}
+
 fn execute_with(args: &[&str], input: &str) -> Vec<String> {
     let mut cargo_handle = Command::new("cargo")
         .args(["run", "-q", "--"])
@@ -44,6 +61,10 @@ fn execute_with(args: &[&str], input: &str) -> Vec<String> {
     let output = cargo_handle
         .wait_with_output()
         .expect("Failed to wait for cargo process");
+    read_output_lines(output)
+}
+
+fn read_output_lines(output: Output) -> Vec<String> {
     String::from_utf8(output.stdout)
         .expect("Failed to convert output to string")
         .trim()
