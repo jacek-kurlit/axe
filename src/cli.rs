@@ -12,4 +12,6 @@ pub struct Cli {
     pub args_separator: String,
     #[arg(short, long, default_value = "\n")]
     pub entries_separator: String,
+    #[arg(short, long)]
+    pub debug: bool,
 }
