@@ -28,6 +28,18 @@ fn should_print_debug_instead_of_running_command() {
 }
 
 #[test]
+fn should_run_echo_with_all_input_when_no_command_provided() {
+    let output = execute_with(&["-d"], "a b c\nd e f");
+    assert_eq!(output, vec!("echo a b c", "echo d e f"));
+}
+
+#[test]
+fn should_pass_all_input_to_commnd_when_no_placeholder_used() {
+    let output = execute_with(&["-d", "cat"], "a b c\nd e f");
+    assert_eq!(output, vec!("cat a b c", "cat d e f"));
+}
+
+#[test]
 fn should_use_arg_file_instead_of_stdin() {
     let output = Command::new("cargo")
         .args([

@@ -63,15 +63,27 @@ type ResolvedArgument<'a> = Vec<ArgTemplatePart<'a>>;
 
 struct ArgumentResolver<'a> {
     resolved_args: Vec<ResolvedArgument<'a>>,
+    has_any_placeholder: bool,
 }
 
 impl<'a> ArgumentResolver<'a> {
     fn new(arg_templates: &'a [String]) -> Result<ArgumentResolver<'a>, LexingError> {
         let resolved_args = resolve_template_args(arg_templates)?;
-        Ok(ArgumentResolver { resolved_args })
+        let has_any_placeholder = resolved_args.iter().any(|arg_template| {
+            arg_template
+                .iter()
+                .any(|part| !matches!(part, ArgTemplatePart::FreeText(_)))
+        });
+        Ok(ArgumentResolver {
+            resolved_args,
+            has_any_placeholder,
+        })
     }
 
     fn resolve(&self, input_args: Vec<&str>) -> Result<Vec<String>, ResolveError> {
+        if !self.has_any_placeholder {
+            return Ok(input_args.into_iter().map(|a| a.to_string()).collect());
+        }
         let mut result = Vec::new();
         for arg_template in &self.resolved_args {
             let mut resolved = self.resolve_arg_template(arg_template, &input_args)?;
