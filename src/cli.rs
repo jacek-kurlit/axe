@@ -43,4 +43,8 @@ pub struct EntriesOptions {
     /// Load all input as single entry
     #[arg(short = '0', long = "single-entry", default_value_t = false)]
     pub single_entry: bool,
+
+    /// Splits input into entries of specified size
+    #[arg(short = 's', long = "entries-size", default_value_t = 0)]
+    pub entry_size: usize,
 }
