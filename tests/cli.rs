@@ -28,6 +28,12 @@ fn should_allow_to_read_input_as_single_entry() {
 }
 
 #[test]
+fn should_allow_to_read_input_as_entries_with_size() {
+    let output = execute_with(&["-d", "-s", "2", "echo", "{}"], "a b c\nd e f");
+    assert_eq!(output, vec!("echo a b", "echo c d", "echo e f"));
+}
+
+#[test]
 fn should_print_debug_instead_of_running_command() {
     let output = execute_with(&["-d", "echo", "{}"], "a b c\nd e f");
     assert_eq!(output, vec!("echo a b c", "echo d e f"));

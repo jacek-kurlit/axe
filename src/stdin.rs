@@ -39,15 +39,30 @@ fn split_input_lines_into_entries(
     stdin_lines: Vec<String>,
     entries: &EntriesOptions,
 ) -> Vec<String> {
-    match (entries.single_entry, entries.entries_separator.as_str()) {
-        (true, _) => vec![stdin_lines.join(" ")],
-        (_, "\n") => stdin_lines,
-        (_, sep) => stdin_lines
+    match (
+        entries.single_entry,
+        entries.entry_size,
+        entries.entries_separator.as_str(),
+    ) {
+        //FIXME: we should take arg separator here not space!
+        (true, _, _) => vec![stdin_lines.join(" ")],
+        (_, size, _) if size > 0 => split_by_size(stdin_lines, size, " "),
+        (_, _, "\n") => stdin_lines,
+        (_, _, sep) => stdin_lines
             .join("")
             .split(&sep)
             .map(|l| l.to_owned())
             .collect(),
     }
+}
+
+//TODO: This method may cause probvlems for large inputs
+fn split_by_size(stdin_lines: Vec<String>, size: usize, sep: &str) -> Vec<String> {
+    let all_args: Vec<String> = stdin_lines
+        .into_iter()
+        .flat_map(|l| l.split(sep).map(|s| s.to_string()).collect::<Vec<String>>())
+        .collect();
+    all_args.chunks(size).map(|c| c.join(sep)).collect()
 }
 
 #[cfg(test)]
@@ -61,6 +76,7 @@ mod tests {
         let entries_options = EntriesOptions {
             single_entry: false,
             entries_separator: "\n".to_string(),
+            entry_size: 0,
         };
         let expected = stdin_lines.clone();
         let actual = split_input_lines_into_entries(stdin_lines, &entries_options);
@@ -72,6 +88,7 @@ mod tests {
         let entries_options = EntriesOptions {
             single_entry: false,
             entries_separator: ";".to_string(),
+            entry_size: 0,
         };
         let stdin_lines = vec!["a b c;d e f;".to_string(), "g h i;j k l".to_string()];
         let expected = vec![
@@ -89,9 +106,28 @@ mod tests {
         let entries_options = EntriesOptions {
             single_entry: true,
             entries_separator: "\n".to_string(),
+            entry_size: 0,
         };
         let stdin_lines = vec!["a b c".to_string(), "d e f".to_string()];
         let expected = vec!["a b c d e f".to_string()];
+        let actual = split_input_lines_into_entries(stdin_lines, &entries_options);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn should_parse_stdio_lines_as_entries_with_size() {
+        let entries_options = EntriesOptions {
+            single_entry: false,
+            entries_separator: "\n".to_string(),
+            entry_size: 2,
+        };
+        let stdin_lines = vec!["a b c".to_string(), "d e f g".to_string()];
+        let expected = vec![
+            "a b".to_string(),
+            "c d".to_string(),
+            "e f".to_string(),
+            "g".to_string(),
+        ];
         let actual = split_input_lines_into_entries(stdin_lines, &entries_options);
         assert_eq!(expected, actual);
     }
