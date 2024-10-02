@@ -5,11 +5,11 @@ use std::{
 
 use clap::error::Result;
 
-use crate::cli::EntriesOptions;
+use crate::cli::{Cli, EntriesOptions};
 
-pub fn read_entries(args_file: &Option<PathBuf>, entries: &EntriesOptions) -> Vec<String> {
-    let stdin_lines = read_input_lines(args_file);
-    split_input_lines_into_entries(stdin_lines, entries)
+pub fn read_entries(cli: &Cli) -> Vec<String> {
+    let stdin_lines = read_input_lines(&cli.args_file);
+    split_input_lines_into_entries(stdin_lines, &cli.entries, &cli.args_separator)
 }
 
 fn read_input_lines(args_file: &Option<PathBuf>) -> Vec<String> {
@@ -38,19 +38,19 @@ fn read_input_lines(args_file: &Option<PathBuf>) -> Vec<String> {
 fn split_input_lines_into_entries(
     stdin_lines: Vec<String>,
     entries: &EntriesOptions,
+    args_separator: &str,
 ) -> Vec<String> {
     match (
         entries.single_entry,
         entries.entry_size,
         entries.entries_separator.as_str(),
     ) {
-        //FIXME: we should take arg separator here not space!
-        (true, _, _) => vec![stdin_lines.join(" ")],
-        (_, size, _) if size > 0 => split_by_size(stdin_lines, size, " "),
+        (true, _, _) => vec![stdin_lines.join(args_separator)],
+        (_, size, _) if size > 0 => split_by_size(stdin_lines, size, args_separator),
         (_, _, "\n") => stdin_lines,
-        (_, _, sep) => stdin_lines
+        (_, _, entry_sep) => stdin_lines
             .join("")
-            .split(&sep)
+            .split(&entry_sep)
             .map(|l| l.to_owned())
             .collect(),
     }
@@ -79,7 +79,7 @@ mod tests {
             entry_size: 0,
         };
         let expected = stdin_lines.clone();
-        let actual = split_input_lines_into_entries(stdin_lines, &entries_options);
+        let actual = split_input_lines_into_entries(stdin_lines, &entries_options, " ");
         assert_eq!(expected, actual);
     }
 
@@ -97,7 +97,7 @@ mod tests {
             "g h i".to_string(),
             "j k l".to_string(),
         ];
-        let actual = split_input_lines_into_entries(stdin_lines.clone(), &entries_options);
+        let actual = split_input_lines_into_entries(stdin_lines.clone(), &entries_options, " ");
         assert_eq!(expected, actual);
     }
 
@@ -108,9 +108,9 @@ mod tests {
             entries_separator: "\n".to_string(),
             entry_size: 0,
         };
-        let stdin_lines = vec!["a b c".to_string(), "d e f".to_string()];
-        let expected = vec!["a b c d e f".to_string()];
-        let actual = split_input_lines_into_entries(stdin_lines, &entries_options);
+        let stdin_lines = vec!["a,b,c".to_string(), "d,e,f".to_string()];
+        let expected = vec!["a,b,c,d,e,f".to_string()];
+        let actual = split_input_lines_into_entries(stdin_lines, &entries_options, ",");
         assert_eq!(expected, actual);
     }
 
@@ -121,14 +121,14 @@ mod tests {
             entries_separator: "\n".to_string(),
             entry_size: 2,
         };
-        let stdin_lines = vec!["a b c".to_string(), "d e f g".to_string()];
+        let stdin_lines = vec!["a;b;c".to_string(), "d;e;f;g".to_string()];
         let expected = vec![
-            "a b".to_string(),
-            "c d".to_string(),
-            "e f".to_string(),
+            "a;b".to_string(),
+            "c;d".to_string(),
+            "e;f".to_string(),
             "g".to_string(),
         ];
-        let actual = split_input_lines_into_entries(stdin_lines, &entries_options);
+        let actual = split_input_lines_into_entries(stdin_lines, &entries_options, ";");
         assert_eq!(expected, actual);
     }
 }
