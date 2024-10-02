@@ -6,7 +6,7 @@ use clap::Parser;
 
 fn main() {
     let cli = Cli::parse();
-    let stdin_entries = read_entries(&cli.args_file, &cli.entries_separator);
+    let stdin_entries = read_entries(&cli.args_file, &cli.entries);
     let resolved_cmd_args = resolve_cmd_args(stdin_entries, &cli);
 
     for cmd_args in resolved_cmd_args {
