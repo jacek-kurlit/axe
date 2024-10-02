@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use clap::{arg, command};
+use clap::{arg, command, Args};
 
 use clap::Parser;
 
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(version, about, long_about = Some("Run command for each entry of arguments"))]
 pub struct Cli {
     #[arg(default_value = "echo")]
@@ -23,13 +23,24 @@ pub struct Cli {
     /// Separator between args. Each entry line will be splitted by this separator
     #[arg(short, long, default_value = " ")]
     pub args_separator: String,
-    /// Separator between entries. Each entry will be splitted by args_separator to produce cmd args
-    #[arg(short, long, default_value = "\n")]
-    pub entries_separator: String,
     /// Print command with resolved args instead of running it
     #[arg(short, long)]
     pub debug: bool,
     /// Reads arguments from file instead of standard input
     #[arg(short = 'f', long, value_name = "FILE")]
     pub args_file: Option<PathBuf>,
+    #[command(flatten)]
+    pub entries: EntriesOptions,
+}
+
+#[derive(Args)]
+#[group(required = false, multiple = false)]
+pub struct EntriesOptions {
+    /// Separator between entries. Each entry will be splitted by args_separator to produce cmd args
+    #[arg(short, long, default_value = "\n")]
+    pub entries_separator: String,
+
+    /// Load all input as single entry
+    #[arg(short = '0', long = "single-entry", default_value_t = false)]
+    pub single_entry: bool,
 }
