@@ -18,7 +18,7 @@ pub struct Cli {
     /// - {x} - x-th argument
     /// - {x<sep>} - x-th argument splittded by <sep> and all parts of split are taken
     /// - {x<sep>y} - x-th argument splittded by <sep> and y-th part of split is taken.
-    #[arg(verbatim_doc_comment)]
+    #[arg(verbatim_doc_comment, allow_hyphen_values = true)]
     pub args_templates: Vec<String>,
     /// Separator between args. Each entry line will be splitted by this separator
     #[arg(short, long, default_value = " ")]

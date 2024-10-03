@@ -81,13 +81,13 @@ impl<'a> ArgumentResolver<'a> {
     }
 
     fn resolve(&self, input_args: Vec<&str>) -> Result<Vec<String>, ResolveError> {
-        if !self.has_any_placeholder {
-            return Ok(input_args.into_iter().map(|a| a.to_string()).collect());
-        }
         let mut result = Vec::new();
         for arg_template in &self.resolved_args {
             let mut resolved = self.resolve_arg_template(arg_template, &input_args)?;
             result.append(&mut resolved);
+        }
+        if !self.has_any_placeholder {
+            result.append(&mut input_args.iter().map(|a| a.to_string()).collect());
         }
         Ok(result)
     }
